@@ -21,7 +21,7 @@ def range_from_angles(angles: Iterable[float]) -> Tuple[float, float]:
     angle_pairs = zip(sorted_angles[1:] + [TAU + sorted_angles[0]], angles)
     hi, lo = max(angle_pairs, key=lambda p: p[0] - p[1])
     if hi > np.pi:
-        hi -= TAU
+        hi = sorted_angles[0]
     return hi, lo
 
 
