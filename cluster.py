@@ -1,79 +1,11 @@
 
 from typing import *
 import numpy as np
+from angle_utils import *
 
 
 DIR_RANGE_CONST = 100
 MAG_RANGE_CONST = 1200
-TAU = 2 * np.pi
-
-
-def range_from_angles(angles: Iterable[float]) -> Tuple[float, float]:
-    """
-    Find the smallest range of angles that includes all angles in the given list
-
-    :param angles: a list of angles from -pi to pi
-    :return: a tuple defining the start and end of a range that contains every
-        angle in the list; a CCW sweep from the first element to the second
-        element of the tuple will cover every angle in the list
-    """
-    sorted_angles = sorted(angles)
-    angle_pairs = zip(sorted_angles[1:] + [TAU + sorted_angles[0]], angles)
-    hi, lo = max(angle_pairs, key=lambda p: p[0] - p[1])
-    if hi > np.pi:
-        hi = sorted_angles[0]
-    return hi, lo
-
-
-def angle_in_range(angle: float, ang_range: Tuple[float, float]) -> bool:
-    """
-    Determine whether the given angle is within the given range
-
-    The range is given as a tuple such that traveling CCW from the first element
-    to the second traverses the range
-
-    :param angle: a float from -pi to pi, what to determine is in range
-    :param ang_range: an angle range, the range to check if angle is in
-    :return: True if angle is in ang_range, False otherwise
-    """
-    lo, hi = ang_range
-    if lo < hi:
-        return lo <= angle <= hi
-    return angle >= lo or angle <= hi
-
-
-def range_size(ang_range: Tuple[float, float]) -> float:
-    """
-    Calculate the size of the given angle range
-
-    :param ang_range: a tuple of two floats giving the start and end of a range
-    :return: a float, the size of the given range
-    """
-    length = ang_range[1] - ang_range[0]
-    if length < 0:
-        return length + TAU
-    return length
-
-
-def combine_angle_ranges(arange: Tuple[float, float],
-                         brange: Tuple[float, float]) -> Tuple[float, float]:
-    """
-    Given two ranges of angles, find the range of their union
-
-    :param arange: a tuple defining the first range to combine
-    :param brange: a tuple defining the second range to combine
-    :return: a range giving the range of the arange union brange
-    """
-    ranges = [
-        arange,
-        (arange[0], brange[1]),
-        (brange[0], arange[1]),
-        brange
-    ]
-    filt_func = lambda r: all(angle_in_range(a, r) for a in (*arange, *brange))
-    filtered_ranges = filter(filt_func, ranges)
-    return min(filtered_ranges, key=range_size)
-
 
 
 class Cluster:
@@ -201,8 +133,8 @@ class Cluster:
         :return: the cluster that would result from combining this with other
         """
         res = Cluster()
-        res._points = np.concatenate(self.points, other.points)
-        res._gradient = np.concatenate(self.gradient, other.gradient)
+        res._points = np.concatenate((self.points, other.points))
+        res._gradient = np.concatenate((self.gradient, other.gradient))
         res._size = self.size + other.size
         max_mag = max(self.mag_limits[1], other.mag_limits[1])
         min_mag = min(self.mag_limits[0], other.mag_limits[0])
