@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 import networkx as nx
 from typing import *
+from cluster import Cluster
 
 
 def camera_capture(show_image: bool = False) -> np.ndarray:
@@ -75,8 +76,7 @@ def compute_gradient(black_white_matrix: np.ndarray) -> np.ndarray: # Alana
     pass
 
 
-def generate_clusters(mag_dir_matrix: np.ndarray)\
-    -> List[List[Tuple[int, int]]]: # Ben
+def generate_clusters(mag_dir_matrix: np.ndarray) -> List[Cluster]:  # Ben
     """
     Finds clusters of pixels.
 
@@ -88,29 +88,25 @@ def generate_clusters(mag_dir_matrix: np.ndarray)\
             of each pixel as well as its magnitude and direction.
     
     Returns:
-        a [[(x,y)]] a list of lists of tuples of x,y points; each sublist is a
-            cluster whose elements give the coordinates of the points in that
-            cluster
+        a list of every Cluster found in the image
     """
     pass
 
 
-def cluster_to_segment(cluster: List[Tuple[int, int]])\
-    -> Tuple[int, int, int, int]:    # Ben
+def cluster_to_segment(cluster: Cluster) -> Tuple[int, int, int, int]:  # Ben
     """
-    Fits a line segment to a given cluster via linear regression. Identifies 
+    Fits a line segment to a given cluster via linear regression. Identifies
         endpoints from points at extremes of line.
-    
+
     Args:
-        cluster: a [(x, y)] list of tuples where each tuple is a point in the 
-            cluster
-        
+        cluster: the Cluster to make into a line segment
+
     Returns:
         a (x1, y1, x2, y2) tuple of endpoints based on the line of best fit for
             the input cluster. the two points are ordered so that when
             traveling from point 1 to point 2, the light side is on the right
     """
-    pass
+    return cluster.to_segment()
     
     
 def quad_detector(segments: np.ndarray) -> np.ndarray:  # Anusha
