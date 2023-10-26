@@ -79,7 +79,9 @@ def get_quads_from_tree(segment_tree: nx.Graph) -> np.ndarray:  # Maya
 
 def dfs(node, path, segment_tree, quads):
     if len(path) == 4:
-        quads.append(path)
+        path.sort()
+        if path not in quads:
+            quads.append(path)
         return
     for child in list(segment_tree.successors(node)):
         # if check_is_valid(): 
@@ -109,7 +111,7 @@ def show_tree(tree):
 
 def main():
     # Number of line segments
-    num_segments = 4
+    num_segments = 10
 
     # Create a random set of line segments as (x1, y1, x2, y2)
     segments = np.random.rand(num_segments, 4)
