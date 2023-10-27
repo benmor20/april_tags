@@ -57,14 +57,19 @@ def segmentation(black_white_matrix: np.ndarray) -> np.ndarray: # Alana
             identified by endpoints. Direction of line segments is such that
             light shapes are on the right from a segment's perspective
     """
-    pass
-
+    cluster_list = generate_clusters(compute_gradient(black_white_matrix))
+    segment_array = np.zeros(shape=(len(cluster_list), 1) dtype = "i, i, i, i")
+        #init blank array, will accept tuples of 4 ints
+        #for normal array, change 1 to 4 and delete dtype bit
+    for i in range(len(cluster_list)):
+        segment_array[i,:] = cluster_to_segment(cluster_list[i])
+    return segment_array
 
 def compute_gradient(black_white_matrix: np.ndarray) -> np.ndarray: # Alana
     """
     Calculate the gradient of each pixel in the image.
 
-    The gradient is calculated using a 3x3 Sobel operator as a convolution
+    The gradient is calculated using a 3x3 Scharr operator as a convolution
     kernel.
 
     Args:
@@ -73,9 +78,24 @@ def compute_gradient(black_white_matrix: np.ndarray) -> np.ndarray: # Alana
     
     Returns:
         a [w x h x 2] numpy array giving the gradient at each pixel - axes are
-            x by y by (magnitude, direction)
+            x by y by (magnitude, direction). Direction is in degrees.
     """
-    pass
+    # for each pixel, find gradient x, gradient y, magnitude, direction
+    # there is a sobel operator built into cv2 which might be easier to use
+    
+    scharr_x_kernel = np.array([-3, 0, 3], [-10, 0, 10], [-3, 0, 3])
+    scharr_y_kernel = np.array([-3, -10, -3], [0, 0, 0], [3, 10, 3])
+    gradient_array = np.zeros(shape = (np.shape(black_white_matrix)[0], np.shape(black_white_matrix)[1], 1), dtype = "f, f")
+        # expects a float for magnitude, None type radian for direction
+    x_grads_array = np.convolve(scharr_x_kernel, black_white_matrix, 'same')
+        # spits out an array of the same dimensions as the larger entered array
+    y_grads_array = np.convolve(scharr_y_kernel, black_white_matrix, 'same')
+    for y in range(int(np.shape(gradient_array)[0])): # goes column by column
+        for x in range(int(np.shape(gradient_array[y])[0])): # goes row by row
+            mag = np.sqrt(np.square(x_grads_array[y][x]) + np.square(y_grads_array[y][x]))
+            dir = np.arctan2(y_grads_array[y][x], x_grads_array[y][x]) # gives radians
+            gradient_array[y][x][0] = (mag, dir) # dir stored as a float
+    return gradient_array
 
 
 def generate_clusters(mag_dir_matrix: np.ndarray) -> List[Cluster]:  # Ben
