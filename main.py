@@ -208,9 +208,9 @@ def quad_detector(segments: np.ndarray) -> np.ndarray:  # Anusha
         a [q x 4 x (x, y)] numpy array containing q quads determined by corners
             listed in (x, y)
     """
-    line_segment_distances()
-    generate_tree()
-    get_quads_from_tree()
+    dist_lookup = line_segment_distances(segments)
+    tree_graph = generate_tree(segments, dist_lookup)
+    quads = get_quads_from_tree(tree_graph)
 
 
 def line_segment_distances(segments: np.ndarray) -> np.ndarray: # Anusha
@@ -234,6 +234,7 @@ def line_segment_distances(segments: np.ndarray) -> np.ndarray: # Anusha
             line_A = segments[i]
             line_B = segments[j]
             dist_lookup[i,j] = np.sqrt([(line_B[0]-line_A[2])**2 + (line_B[1]-line_A[3]**2)])
+    return dist_lookup
 
 
 def generate_tree(segments: np.ndarray, dist_lookup: np.ndarray) -> nx.Graph:   # Maya
