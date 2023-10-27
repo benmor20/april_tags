@@ -208,7 +208,12 @@ def line_segment_distances(segments: np.ndarray) -> np.ndarray: # Anusha
         line A and the start of line B for all A and B. A is indexed by row, B
         by column. Points along the diagonal give the length of the line.
     """
-    pass
+    dist_lookup = np.zeros(len(segments),len(segments))
+    for i in segments:
+        for j in segments:
+            line_A = segments[i]
+            line_B = segments[j]
+            dist_lookup[i,j] = np.sqrt([(line_B[0]-line_A[2])**2 + (line_B[1]-line_A[3]**2)])
 
 
 def generate_tree(segments: np.ndarray, dist_lookup: np.ndarray) -> nx.Graph:   # Maya
