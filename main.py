@@ -41,7 +41,9 @@ def april_tag_detector(image_matrix: np.ndarray):
         image_matrix: a [w x h x 3] numpy array giving the image to capture
             an april tag from - axes are x by y by BRG
     """
-    pass
+    bw_image = cv2.cvtColor(image_matrix, cv2.COLOR_BGR2GRAY)
+    print(bw_image)
+
 
 
 def segmentation(black_white_matrix: np.ndarray) -> np.ndarray: # Alana
@@ -58,11 +60,11 @@ def segmentation(black_white_matrix: np.ndarray) -> np.ndarray: # Alana
             light shapes are on the right from a segment's perspective
     """
     cluster_list = generate_clusters(compute_gradient(black_white_matrix))
-    segment_array = np.zeros(shape=(len(cluster_list), 1) dtype = "i, i, i, i")
+    segment_array = np.zeros(shape=(len(cluster_list), 1), dtype = "i, i, i, i")
         #init blank array, will accept tuples of 4 ints
         #for normal array, change 1 to 4 and delete dtype bit
     for i in range(len(cluster_list)):
-        segment_array[i,:] = cluster_to_segment(cluster_list[i])
+        segment_array[i,:] = cluster_list[i].to_segment()
     return segment_array
 
 def compute_gradient(black_white_matrix: np.ndarray) -> np.ndarray: # Alana
@@ -82,6 +84,7 @@ def compute_gradient(black_white_matrix: np.ndarray) -> np.ndarray: # Alana
     """
     # for each pixel, find gradient x, gradient y, magnitude, direction
     # there is a sobel operator built into cv2 which might be easier to use
+    # Scharr kernel is similar to Sobel kernel, but more accurate as a 3x3 matrix
     
     scharr_x_kernel = np.array([-3, 0, 3], [-10, 0, 10], [-3, 0, 3])
     scharr_y_kernel = np.array([-3, -10, -3], [0, 0, 0], [3, 10, 3])
@@ -178,22 +181,6 @@ def create_cluster_graph(mag_dir_matrix: np.ndarray) -> nx.Graph:
                 weight = angle_diff(pixel_angle, neighbor_angle)
                 graph.add_edge(pixel_num, neighbor_num, weight=weight)
     return graph
-
-
-def cluster_to_segment(cluster: Cluster) -> Tuple[int, int, int, int]:  # Ben
-    """
-    Fits a line segment to a given cluster via linear regression. Identifies
-        endpoints from points at extremes of line.
-
-    Args:
-        cluster: the Cluster to make into a line segment
-
-    Returns:
-        a (x1, y1, x2, y2) tuple of endpoints based on the line of best fit for
-            the input cluster. the two points are ordered so that when
-            traveling from point 1 to point 2, the light side is on the right
-    """
-    return cluster.to_segment()
     
     
 def quad_detector(segments: np.ndarray) -> np.ndarray:  # Anusha
@@ -282,7 +269,14 @@ def get_quads_from_tree(segment_tree: nx.Graph) -> np.ndarray:  # Maya
 
 
 def main():
-    pass
+    # black_white_matrix = np.array([[1,1,1,1], [1,0,0,1], [1,0,0,1], [1,1,1,1]])
+
+    # color_matrix = np.stack((black_white_matrix, black_white_matrix, black_white_matrix)).swapaxes(0, 2)
+    color_matrix = cv2.imread("images/small_test.png",0)
+    print(color_matrix)
+    cv2.imshow('color', color_matrix)
+    print(color_matrix.shape)
+    april_tag_detector(color_matrix)
     
 
 if __name__ == '__main__':
