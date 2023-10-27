@@ -6,6 +6,7 @@ import itertools
 import cv2
 import numpy as np
 import networkx as nx
+from scipy import signal
 from typing import *
 from cluster import Cluster
 from angle_utils import angle_diff
@@ -42,8 +43,7 @@ def april_tag_detector(image_matrix: np.ndarray):
             an april tag from - axes are x by y by BRG
     """
     bw_image = cv2.cvtColor(image_matrix, cv2.COLOR_BGR2GRAY)
-    print(bw_image)
-
+    print(segmentation(bw_image))
 
 
 def segmentation(black_white_matrix: np.ndarray) -> np.ndarray: # Alana
@@ -59,7 +59,9 @@ def segmentation(black_white_matrix: np.ndarray) -> np.ndarray: # Alana
             identified by endpoints. Direction of line segments is such that
             light shapes are on the right from a segment's perspective
     """
-    cluster_list = generate_clusters(compute_gradient(black_white_matrix))
+    gradient = compute_gradient(black_white_matrix)
+    print(gradient)
+    cluster_list = generate_clusters(gradient)
     segment_array = np.zeros(shape=(len(cluster_list), 1), dtype = "i, i, i, i")
         #init blank array, will accept tuples of 4 ints
         #for normal array, change 1 to 4 and delete dtype bit
@@ -86,18 +88,19 @@ def compute_gradient(black_white_matrix: np.ndarray) -> np.ndarray: # Alana
     # there is a sobel operator built into cv2 which might be easier to use
     # Scharr kernel is similar to Sobel kernel, but more accurate as a 3x3 matrix
     
-    scharr_x_kernel = np.array([-3, 0, 3], [-10, 0, 10], [-3, 0, 3])
-    scharr_y_kernel = np.array([-3, -10, -3], [0, 0, 0], [3, 10, 3])
-    gradient_array = np.zeros(shape = (np.shape(black_white_matrix)[0], np.shape(black_white_matrix)[1], 1), dtype = "f, f")
+    scharr_x_kernel = np.array([[-3, 0, 3], [-10, 0, 10], [-3, 0, 3]])
+    scharr_y_kernel = np.array([[-3, -10, -3], [0, 0, 0], [3, 10, 3]])
+    gradient_array = np.zeros(shape = (np.shape(black_white_matrix)[0], np.shape(black_white_matrix)[1], 2))
         # expects a float for magnitude, None type radian for direction
-    x_grads_array = np.convolve(scharr_x_kernel, black_white_matrix, 'same')
-        # spits out an array of the same dimensions as the larger entered array
-    y_grads_array = np.convolve(scharr_y_kernel, black_white_matrix, 'same')
+    x_grads_array = signal.convolve2d(black_white_matrix, scharr_x_kernel, 'same')
+        # spits out an array of the same dimensions as the first entered array
+    y_grads_array = signal.convolve2d(black_white_matrix, scharr_y_kernel, 'same')
     for y in range(int(np.shape(gradient_array)[0])): # goes column by column
         for x in range(int(np.shape(gradient_array[y])[0])): # goes row by row
             mag = np.sqrt(np.square(x_grads_array[y][x]) + np.square(y_grads_array[y][x]))
             dir = np.arctan2(y_grads_array[y][x], x_grads_array[y][x]) # gives radians
-            gradient_array[y][x][0] = (mag, dir) # dir stored as a float
+            gradient_array[y][x][0] = mag # dir stored as a float
+            gradient_array[y][x][1] = dir 
     return gradient_array
 
 
@@ -115,28 +118,47 @@ def generate_clusters(mag_dir_matrix: np.ndarray) -> List[Cluster]:  # Ben
     Returns:
         a list of every Cluster found in the image
     """
+    # Create graph
     row_len = mag_dir_matrix.shape[1]
     graph = create_cluster_graph(mag_dir_matrix)
+
+    # Create initial clusters (one per pixel)
     clusters = {i: Cluster(np.array([[i % row_len, i // row_len]]),
                            mag_dir_matrix) for i in graph.nodes}
     next_cluster_num = mag_dir_matrix.size // 2
+
+    # Keep track of which cluster each pixel is in
     pixel_to_cluster = np.array(range(len(graph.nodes)))
+
+    # Edges are tested in order of their weight
     sorted_edges = sorted(graph.edges, key=lambda e: graph[e[0]][e[1]]['weight'])
     for edge in sorted_edges:
         if pixel_to_cluster[edge[0]] == pixel_to_cluster[edge[1]]:
+            # If the two pixels are in the same cluster, skip them
             continue
+        # Get the two clusters and combine them
         cluster1 = clusters[pixel_to_cluster[edge[0]]]
         cluster2 = clusters[pixel_to_cluster[edge[1]]]
         combined = cluster1.combine_clusters(cluster2)
+
         if combined is None:
-            print(f'Clusters {pixel_to_cluster[0]} and {pixel_to_cluster[1]} will not be combined')
+            # If combined is None, we should not combine - skip
             continue
-        print(f'Combining clusters {pixel_to_cluster[edge[0]]} and {pixel_to_cluster[edge[1]]} into {next_cluster_num}')
+
+        # Delete the old clusters
         del clusters[pixel_to_cluster[edge[0]]]
         del clusters[pixel_to_cluster[edge[1]]]
+
+        # Add the combined cluster to the lookup dictionary
         clusters[next_cluster_num] = combined
+
+        # Find all of the pixels in the combined cluster
         pixel_nums = combined.points[:, 0] + row_len * combined.points[:, 1]
+
+        # Update which cluster each pixel is in
         pixel_to_cluster[pixel_nums] = next_cluster_num
+
+        # Update the number for the next cluster
         next_cluster_num += 1
     return [c for c in clusters.values() if c.size > 1]
 
@@ -145,10 +167,10 @@ def create_cluster_graph(mag_dir_matrix: np.ndarray) -> nx.Graph:
     """
     Create the graph to use in clustering the image
 
-    Each node represents a pixel, with 0 being top left and continuing
-    left-to-right, top-to-bottom. There is an edge between each adjacent pixel,
-    with the edge weight being equal to the difference in directions, in
-    radians.
+    Each node is an integer representing a pixel, with 0 being top left and
+    continuing left-to-right, top-to-bottom. There is an edge between each
+    adjacent pixel, with the edge weight being equal to the difference in
+    directions, in radians.
 
     Args:
         mag_dir_matrix: a [w x h x (m,d)] numpy array containing the location
@@ -270,12 +292,8 @@ def get_quads_from_tree(segment_tree: nx.Graph) -> np.ndarray:  # Maya
 
 def main():
     # black_white_matrix = np.array([[1,1,1,1], [1,0,0,1], [1,0,0,1], [1,1,1,1]])
-
     # color_matrix = np.stack((black_white_matrix, black_white_matrix, black_white_matrix)).swapaxes(0, 2)
-    color_matrix = cv2.imread("images/small_test.png",0)
-    print(color_matrix)
-    cv2.imshow('color', color_matrix)
-    print(color_matrix.shape)
+    color_matrix = cv2.imread("images/black_rectangle.jpg")
     april_tag_detector(color_matrix)
     
 

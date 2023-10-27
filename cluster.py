@@ -154,12 +154,17 @@ class Cluster:
                 traveling from point 1 to point 2, the light side is on the right
         """
         # Compute line
-        fit = np.polyfit(self.points[:, 0], self.points[:, 1], 1)
-        slope = fit[0]
-        yint = fit[1]
-        yint_vec = np.array([0, yint])
-        adj_pts = self.points - yint_vec
-        unit_vec = np.array([1, slope]) / np.hypot(1, slope)
+        try:
+            fit = np.polyfit(self.points[:, 0], self.points[:, 1], 1)
+            slope = fit[0]
+            yint = fit[1]
+            yint_vec = np.array([0, yint])
+            adj_pts = self.points - yint_vec
+            unit_vec = np.array([1, slope]) / np.hypot(1, slope)
+        except ValueError:
+            unit_vec = np.array([0, 1])
+            adj_pts = self.points
+            yint_vec = np.array([0, 0])
         projected = adj_pts @ unit_vec
         min_pt = np.min(projected) * unit_vec + yint_vec
         max_pt = np.max(projected) * unit_vec + yint_vec
