@@ -10,6 +10,7 @@ from scipy import signal
 from typing import *
 from cluster import Cluster
 from angle_utils import angle_diff
+from matplotlib import pyplot as plt
 
 
 def camera_capture(show_image: bool = False) -> np.ndarray:
@@ -60,11 +61,10 @@ def segmentation(black_white_matrix: np.ndarray) -> np.ndarray: # Alana
             light shapes are on the right from a segment's perspective
     """
     gradient = compute_gradient(black_white_matrix)
-    print(gradient)
+    print('Found gradient')
     cluster_list = generate_clusters(gradient)
-    segment_array = np.zeros(shape=(len(cluster_list), 1), dtype = "i, i, i, i")
-        #init blank array, will accept tuples of 4 ints
-        #for normal array, change 1 to 4 and delete dtype bit
+    print('Generated clusters')
+    segment_array = np.zeros(shape=(len(cluster_list), 4))
     for i in range(len(cluster_list)):
         segment_array[i,:] = cluster_list[i].to_segment()
     return segment_array
@@ -121,11 +121,12 @@ def generate_clusters(mag_dir_matrix: np.ndarray) -> List[Cluster]:  # Ben
     # Create graph
     row_len = mag_dir_matrix.shape[1]
     graph = create_cluster_graph(mag_dir_matrix)
+    print('Made cluster graph')
 
     # Create initial clusters (one per pixel)
     clusters = {i: Cluster(np.array([[i % row_len, i // row_len]]),
                            mag_dir_matrix) for i in graph.nodes}
-    next_cluster_num = mag_dir_matrix.size // 2
+    next_cluster_num = mag_dir_matrix.shape[0] * mag_dir_matrix.shape[1]
 
     # Keep track of which cluster each pixel is in
     pixel_to_cluster = np.array(range(len(graph.nodes)))
@@ -160,7 +161,12 @@ def generate_clusters(mag_dir_matrix: np.ndarray) -> List[Cluster]:  # Ben
 
         # Update the number for the next cluster
         next_cluster_num += 1
-    return [c for c in clusters.values() if c.size > 1]
+    print('Plotting clusters')
+    final_clusters = [c for c in clusters.values() if c.size > 5]
+    for cluster in final_clusters:
+        plt.scatter(cluster.points[:, 0], cluster.points[:, 1])
+    plt.show()
+    return final_clusters
 
 
 def create_cluster_graph(mag_dir_matrix: np.ndarray) -> nx.Graph:
@@ -180,17 +186,17 @@ def create_cluster_graph(mag_dir_matrix: np.ndarray) -> nx.Graph:
         a networkx Graph of the image to use to create clusters
     """
     graph = nx.Graph()
-    graph.add_nodes_from(range(mag_dir_matrix.size // 2))
+    graph.add_nodes_from(range(mag_dir_matrix.shape[0] * mag_dir_matrix.shape[1]))
     row_len = mag_dir_matrix.shape[1]
     for pixel_num in graph.nodes:
-        pixel = divmod(pixel_num, row_len)[::-1]
+        pixel = pixel_num % row_len, pixel_num // row_len
         neighbors = [
             (pixel[0], pixel[1] + 1),
             (pixel[0], pixel[1] - 1),
             (pixel[0] + 1, pixel[1]),
             (pixel[0] - 1, pixel[1])
         ]
-        pixel_angle = mag_dir_matrix[pixel[0], pixel[1], 1]
+        pixel_angle = mag_dir_matrix[pixel[1], pixel[0], 1]
         for neighbor in neighbors:
             if neighbor[0] >= row_len or neighbor[1] >= mag_dir_matrix.shape[0]\
                     or any(n < 0 for n in neighbor):
@@ -199,7 +205,7 @@ def create_cluster_graph(mag_dir_matrix: np.ndarray) -> nx.Graph:
             if graph.has_edge(pixel_num, neighbor_num):
                 continue
             if neighbor_num in graph.nodes:
-                neighbor_angle = mag_dir_matrix[neighbor[0], neighbor[1], 1]
+                neighbor_angle = mag_dir_matrix[neighbor[1], neighbor[0], 1]
                 weight = angle_diff(pixel_angle, neighbor_angle)
                 graph.add_edge(pixel_num, neighbor_num, weight=weight)
     return graph
@@ -291,10 +297,13 @@ def get_quads_from_tree(segment_tree: nx.Graph) -> np.ndarray:  # Maya
 
 
 def main():
-    # black_white_matrix = np.array([[1,1,1,1], [1,0,0,1], [1,0,0,1], [1,1,1,1]])
-    # color_matrix = np.stack((black_white_matrix, black_white_matrix, black_white_matrix)).swapaxes(0, 2)
-    color_matrix = cv2.imread("images/black_rectangle.jpg")
-    april_tag_detector(color_matrix)
+    color_matrix = cv2.imread('images/black_rectangle.png')
+    print(color_matrix.shape)
+    bw_image = cv2.cvtColor(color_matrix, cv2.COLOR_BGR2GRAY)
+    segments = segmentation(bw_image)
+    print(segments)
+    plt.quiver(segments[:, 0], segments[:, 1], segments[:, 2] - segments[:, 0], segments[:, 3] - segments[:, 1])
+    plt.show()
     
 
 if __name__ == '__main__':

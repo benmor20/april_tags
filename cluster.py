@@ -55,7 +55,7 @@ class Cluster:
             self._size = points.shape[0]
             self._points = points
             if gradient.ndim == 3:
-                gradient = gradient[points[:, 0], points[:, 1], :]
+                gradient = gradient[points[:, 1], points[:, 0], :]
             self._gradient = gradient
             min_limits = np.min(gradient, axis=0)
             max_limits = np.max(gradient, axis=0)
