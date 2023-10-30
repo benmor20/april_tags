@@ -3,6 +3,7 @@ import numpy as np
 import networkx as nx
 from typing import *
 import matplotlib.pyplot as plt
+import math
 
 def generate_tree(segments: np.ndarray, dist_lookup: np.ndarray) -> nx.Graph:   # Maya
     """
@@ -54,7 +55,7 @@ def generate_tree(segments: np.ndarray, dist_lookup: np.ndarray) -> nx.Graph:   
   
 
 
-def get_quads_from_tree(segment_tree: nx.Graph) -> np.ndarray:  # Maya
+def get_quads_from_tree(segment_tree: nx.Graph, dist_lookup: np.ndarray, segments) -> np.ndarray:  # Maya
     """
     Takes tree and conducts a depth-first search for possible quadrilaterals
         based on nearby line segments.
@@ -73,20 +74,30 @@ def get_quads_from_tree(segment_tree: nx.Graph) -> np.ndarray:  # Maya
     """
     quads = []
     for root in segment_tree.nodes():
-        quads = dfs(root, [], segment_tree, quads)
+        quads = dfs(root, [], segment_tree, quads, dist_lookup, segments)
     return quads
     
 
-def dfs(node, path, segment_tree, quads):
+def dfs(node, path, segment_tree, quads, dist_lookup, segments):
     if len(path) == 4:
         path.sort()
         if path not in quads:
             quads.append(path)
         return
     for child in list(segment_tree.successors(node)):
-        # if check_is_valid(): 
-        dfs(child, path + [child[0]], segment_tree, quads)
+        if node == "Root":
+            dfs(child, path + [child[0]], segment_tree, quads,  dist_lookup, segments)
+        elif check_distance(node[0],child[0],dist_lookup,segments):
+            dfs(child, path + [child[0]], segment_tree, quads,  dist_lookup, segments)
     return np.array(quads)
+
+def check_distance(parent_index, child_index, dist_lookup, segments):
+    x1, y1, x2, y2 = segments[parent_index]
+    length = math.sqrt((x1 - x2)**2 + (y1-y2)**2)
+    thresh_hold = length * 2 + 5
+    if thresh_hold > dist_lookup[parent_index][child_index]:
+        return True
+    return False
 
 
 def show_tree(tree):
@@ -111,7 +122,7 @@ def show_tree(tree):
 
 def main():
     # Number of line segments
-    num_segments = 10
+    num_segments = 5
 
     # Create a random set of line segments as (x1, y1, x2, y2)
     segments = np.random.rand(num_segments, 4)
@@ -120,11 +131,13 @@ def main():
     segments[:, [0, 2]] = np.sort(segments[:, [0, 2]], axis=1)
     segments[:, [1, 3]] = np.sort(segments[:, [1, 3]], axis=1)
 
-    # print("Random Line Segments:")
-    # print(segments)
+    print("Random Line Segments:")
+
 
     # Calculate distances between segments
     dist_lookup = np.zeros((num_segments, num_segments))
+    print(dist_lookup)
+
 
     for i in range(num_segments):
         for j in range(num_segments):
@@ -141,9 +154,9 @@ def main():
     tree = generate_tree(segments, dist_lookup)
     print(tree)
 
-    # show_tree(tree)
+    # =show_tree(tree)
 
-    quads = get_quads_from_tree(tree)
+    quads = get_quads_from_tree(tree, dist_lookup, segments)
 
     print(quads)
     print(len(quads))
