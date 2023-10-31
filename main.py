@@ -44,7 +44,8 @@ def april_tag_detector(image_matrix: np.ndarray):
             an april tag from - axes are x by y by BRG
     """
     bw_image = cv2.cvtColor(image_matrix, cv2.COLOR_BGR2GRAY)
-    print(segmentation(bw_image))
+    segments = segmentation(bw_image)
+    print(quad_detector(segments))
 
 
 def segmentation(black_white_matrix: np.ndarray) -> np.ndarray: # Alana
@@ -161,13 +162,15 @@ def generate_clusters(mag_dir_matrix: np.ndarray) -> List[Cluster]:  # Ben
 
         # Update the number for the next cluster
         next_cluster_num += 1
-    print('Plotting clusters')
+        
     final_clusters = [c for c in clusters.values() if c.size > 5]
-    for cluster in final_clusters:
-        plt.scatter(cluster.points[:, 0], cluster.points[:, 1])
-        plt.xlim([-10, mag_dir_matrix.shape[1] + 10])
-        plt.ylim([-10, mag_dir_matrix.shape[0] + 10])
-        plt.show()
+    # print('Plotting clusters')
+    # for cluster in final_clusters:
+    #     plt.scatter(cluster.points[:, 0], cluster.points[:, 1])
+    #     plt.xlim([-10, mag_dir_matrix.shape[1] + 10])
+    #     plt.ylim([-10, mag_dir_matrix.shape[0] + 10])
+    #     plt.show()
+        
     return final_clusters
 
 
@@ -227,7 +230,7 @@ def quad_detector(segments: np.ndarray) -> np.ndarray:  # Anusha
     """
     dist_lookup = line_segment_distances(segments)
     tree_graph = generate_tree(segments, dist_lookup)
-    quads = get_quads_from_tree(tree_graph)
+    quads = get_quads_from_tree(tree_graph, dist_lookup, segments)
     return quads
 
 
@@ -243,39 +246,22 @@ def line_segment_distances(segments: np.ndarray) -> np.ndarray: # Anusha
     
     Returns:
         a [n x n] numpy array bool_dist_lookup that returns True if the start
-        of line B is within 2 times with length of line B plus five pixels. A
+        of line B is within 2 times with length of line A plus five pixels. A
         is indexed by row, B by column. Points along the diagonal return True.
     """
-    dist_lookup = np.zeros(len(segments),len(segments))
-    bool_dist_lookup = np.array(dist_lookup, dtype='bool')  # all False
-    for i in segments:
-        for j in segments:
-            line_A = segments[i]
-            line_B = segments[j]
-            if i == j:  # diagonal values
-                length = np.sqrt([(line_A[2]-line_A[0])**2 +
-                                  (line_A[3]-line_A[1]**2)])
-                # set to threshold of 2*line length + 5 pixels
-                dist_lookup[i,i] = 2*length + 5
-            else:
-                # distance between end of line A and start of line B
-                dist_lookup[i,j] = np.sqrt([(line_B[0]-line_A[2])**2 +
-                                            (line_B[1]-line_A[3]**2)])
-    for i in segments:
-        for j in segments:
-            if i == j:  # diagonal values always return True
-                bool_dist_lookup[i,i] = True
-            else:
-                # if distance between end of line A and start of line B is
-                # within threshold, set to True
-                if dist_lookup[i,j] <= dist_lookup[i,i]:
-                    bool_dist_lookup[i,j] = True
-    return bool_dist_lookup
+    nsegments = segments.shape[0]
+    a, b = np.meshgrid(np.arange(nsegments), np.arange(nsegments))
+    dist_sq = (segments[a, 3] - segments[b, 1]) ** 2 + (segments[a, 2] - segments[b, 0]) ** 2
+    dists = np.sqrt(dist_sq)
+    lengths = np.diag(dists)
+    is_close = dists < 2 * lengths + 5
+    return is_close
 
 
 def generate_tree(segments: np.ndarray, dist_lookup: np.ndarray) -> nx.Graph:   # Maya
     """
     Generate a tree of line segments to detect quadrilaterals from
+    
 
     The root of the graph points to every possible line segment. From there,
     each child node points to every line segment whose start is "close enough"
@@ -284,7 +270,7 @@ def generate_tree(segments: np.ndarray, dist_lookup: np.ndarray) -> nx.Graph:   
 
     Args:
         segments: a [n x (x1, y1, x2, y2)] numpy array giving the start and end
-            points oof each line segment, so that traveling from point 1 to
+            points of each line segment, so that traveling from point 1 to
             point 2 has the light side on the right.
         dist_lookup: a [n x n] numpy array giving the distance (in pixels)
             between the end line A and the start of line B for all A and B. A
@@ -294,10 +280,35 @@ def generate_tree(segments: np.ndarray, dist_lookup: np.ndarray) -> nx.Graph:   
     Returns:
         a NetworkX graph giving the tree of line s
     """
-    pass
+    graph = nx.DiGraph()
+
+    # Add the root node to the graph
+    root = "Root"
+    graph.add_node(root)
+
+    # level 1
+    for i, segment in enumerate(segments):
+        child = (i, 1)
+        graph.add_edge(root, child)
+        # level 2
+        for j in range(len(segments)):
+            if j != i:
+                child2 = (j, i, 2)
+                graph.add_edge(child, child2)
+                # level 3
+                for k in range(len(segments)):
+                    if k != i and k != j:
+                        child3 = (k, j, i, 3)
+                        graph.add_edge(child2, child3)
+                        # level 4
+                        for l in range(len(segment)):
+                            if l != i and l != k and l != j:
+                                child4 = (l, k, j , i, 4)
+                                graph.add_edge(child3, child4)
+    return graph
 
 
-def get_quads_from_tree(segment_tree: nx.Graph) -> np.ndarray:  # Maya
+def get_quads_from_tree(segment_tree: nx.Graph, dist_lookup: np.ndarray, segments) -> np.ndarray:  # Maya
     """
     Takes tree and conducts a depth-first search for possible quadrilaterals
         based on nearby line segments.
@@ -314,7 +325,27 @@ def get_quads_from_tree(segment_tree: nx.Graph) -> np.ndarray:  # Maya
         a [q x 4 x (x1, y1, x2, y2)] numpy array where 4 x (x1, y1, x2, y2)
             determines the four line segments making up the quad
     """
-    pass
+    quads = []
+    for root in segment_tree.nodes():
+        quads = dfs(root, [], segment_tree, quads, dist_lookup, segments)
+    return quads
+    
+
+def dfs(node, path, segment_tree, quads, dist_lookup, segments):
+    """
+    Depth-first search
+    """
+    if len(path) == 4:
+        path.sort()
+        if path not in quads:
+            quads.append(path)
+        return
+    for child in list(segment_tree.successors(node)):
+        if node == "Root":
+            dfs(child, path + [child[0]], segment_tree, quads,  dist_lookup, segments)
+        elif dist_lookup[node[0]][child[0]]:
+            dfs(child, path + [child[0]], segment_tree, quads,  dist_lookup, segments)
+    return np.array(quads)
 
 
 def main():
@@ -322,15 +353,23 @@ def main():
     print(color_matrix.shape)
     bw_image = cv2.cvtColor(color_matrix, cv2.COLOR_BGR2GRAY)
 
-    segments = segmentation(bw_image)
-    print(segments)
-    x = segments[:, 0]
-    y = segments[:, 1]
-    dx = segments[:, 2] - segments[:, 0]
-    dy = segments[:, 3] - segments[:, 1]
-    for idx in range(x.size):
-        plt.arrow(x[idx], y[idx], dx[idx], dy[idx], head_width=15, length_includes_head=True)
-    plt.show()
+    segments = np.array([[1, 0, 437, 0],
+                         [381, 105, 59, 105],
+                         [58, 112, 58, 221],
+                         [381, 163, 58, 164],
+                         [382, 221, 382, 107],
+                         [383, 221, 383, 109],
+                         [384, 221, 384, 108],
+                         [59, 222, 381, 222],
+                         [0, 326, 0, 1],
+                         [0, 163, 437, 163],
+                         [438, 1, 438, 326],
+                         [437, 327, 1, 327]])
+    print(segments.shape)
+    quads_by_idx = quad_detector(segments)
+    print(quads_by_idx)
+    print(quads_by_idx.shape)
+    # april_tag_detector(color_matrix)
     
 
 if __name__ == '__main__':

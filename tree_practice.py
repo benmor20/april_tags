@@ -124,6 +124,10 @@ def plot_segment(segment):
     y = [y1,y2]
     plt.plot(x, y, label='Line', marker='o', markersize=5)  # 'o' specifies markers at the data points
     
+def plot_quad(quad):
+    for segment in quad:
+        plot_segment(segment)
+
 
 
 def main():
@@ -167,13 +171,9 @@ def main():
     print(quads)
     print(len(quads))
 
-    l1, l2, l3, l4 = quads[0]
-    x1, y1, x2, y2 = segments[l1]
-    x = [x1,x2]
-    y = [y1,y2]
-    for i in range(4):
-        plot_segment(quads[0][i])
-    plt.show()
+    # for quad in quads:
+    #     plot_quad(quad)
+    # plt.show()
 
 
    
