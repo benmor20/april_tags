@@ -87,17 +87,17 @@ def dfs(node, path, segment_tree, quads, dist_lookup, segments):
     for child in list(segment_tree.successors(node)):
         if node == "Root":
             dfs(child, path + [child[0]], segment_tree, quads,  dist_lookup, segments)
-        elif check_distance(node[0],child[0],dist_lookup,segments):
+        elif dist_lookup[node[0]][child[0]]:
             dfs(child, path + [child[0]], segment_tree, quads,  dist_lookup, segments)
     return np.array(quads)
 
-def check_distance(parent_index, child_index, dist_lookup, segments):
-    x1, y1, x2, y2 = segments[parent_index]
-    length = math.sqrt((x1 - x2)**2 + (y1-y2)**2)
-    thresh_hold = length * 2 + 5
-    if thresh_hold > dist_lookup[parent_index][child_index]:
-        return True
-    return False
+# def check_distance(parent_index, child_index, dist_lookup, segments):
+#     x1, y1, x2, y2 = segments[parent_index]
+#     length = math.sqrt((x1 - x2)**2 + (y1-y2)**2)
+#     thresh_hold = length * 2 + 5
+#     if thresh_hold > dist_lookup[parent_index][child_index]:
+#         return True
+#     return False
 
 
 def show_tree(tree):
@@ -117,6 +117,12 @@ def show_tree(tree):
     # Show the plot
     plt.title("Segment Tree")
     plt.show()
+
+def plot_segment(segment):
+    x1, y1, x2, y2 = segment
+    x = [x1,x2]
+    y = [y1,y2]
+    plt.plot(x, y, label='Line', marker='o', markersize=5)  # 'o' specifies markers at the data points
     
 
 
@@ -160,6 +166,16 @@ def main():
 
     print(quads)
     print(len(quads))
+
+    l1, l2, l3, l4 = quads[0]
+    x1, y1, x2, y2 = segments[l1]
+    x = [x1,x2]
+    y = [y1,y2]
+    for i in range(4):
+        plot_segment(quads[0][i])
+    plt.show()
+
+
    
 
 if __name__ == '__main__':
