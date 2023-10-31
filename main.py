@@ -165,7 +165,9 @@ def generate_clusters(mag_dir_matrix: np.ndarray) -> List[Cluster]:  # Ben
     final_clusters = [c for c in clusters.values() if c.size > 5]
     for cluster in final_clusters:
         plt.scatter(cluster.points[:, 0], cluster.points[:, 1])
-    plt.show()
+        plt.xlim([-10, mag_dir_matrix.shape[1] + 10])
+        plt.ylim([-10, mag_dir_matrix.shape[0] + 10])
+        plt.show()
     return final_clusters
 
 
@@ -300,9 +302,15 @@ def main():
     color_matrix = cv2.imread('images/black_rectangle.png')
     print(color_matrix.shape)
     bw_image = cv2.cvtColor(color_matrix, cv2.COLOR_BGR2GRAY)
+
     segments = segmentation(bw_image)
     print(segments)
-    plt.quiver(segments[:, 0], segments[:, 1], segments[:, 2] - segments[:, 0], segments[:, 3] - segments[:, 1])
+    x = segments[:, 0]
+    y = segments[:, 1]
+    dx = segments[:, 2] - segments[:, 0]
+    dy = segments[:, 3] - segments[:, 1]
+    for idx in range(x.size):
+        plt.arrow(x[idx], y[idx], dx[idx], dy[idx], head_width=15, length_includes_head=True)
     plt.show()
     
 
