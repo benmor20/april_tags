@@ -226,6 +226,7 @@ def quad_detector(segments: np.ndarray) -> np.ndarray:  # Anusha
     dist_lookup = line_segment_distances(segments)
     tree_graph = generate_tree(segments, dist_lookup)
     quads = get_quads_from_tree(tree_graph)
+    return quads
 
 
 def line_segment_distances(segments: np.ndarray) -> np.ndarray: # Anusha
@@ -239,17 +240,35 @@ def line_segment_distances(segments: np.ndarray) -> np.ndarray: # Anusha
             points of each line segment
     
     Returns:
-        a [n x n] numpy array giving the distance (in pixels) between the end
-        line A and the start of line B for all A and B. A is indexed by row, B
-        by column. Points along the diagonal give the length of the line.
+        a [n x n] numpy array bool_dist_lookup that returns True if the start
+        of line B is within 2 times with length of line B plus five pixels. A
+        is indexed by row, B by column. Points along the diagonal return True.
     """
     dist_lookup = np.zeros(len(segments),len(segments))
+    bool_dist_lookup = np.array(dist_lookup, dtype='bool')  # all False
     for i in segments:
         for j in segments:
             line_A = segments[i]
             line_B = segments[j]
-            dist_lookup[i,j] = np.sqrt([(line_B[0]-line_A[2])**2 + (line_B[1]-line_A[3]**2)])
-    return dist_lookup
+            if i == j:  # diagonal values
+                length = np.sqrt([(line_A[2]-line_A[0])**2 +
+                                  (line_A[3]-line_A[1]**2)])
+                # set to threshold of 2*line length + 5 pixels
+                dist_lookup[i,i] = 2*length + 5
+            else:
+                # distance between end of line A and start of line B
+                dist_lookup[i,j] = np.sqrt([(line_B[0]-line_A[2])**2 +
+                                            (line_B[1]-line_A[3]**2)])
+    for i in segments:
+        for j in segments:
+            if i == j:  # diagonal values always return True
+                bool_dist_lookup[i,i] = True
+            else:
+                # if distance between end of line A and start of line B is
+                # within threshold, set to True
+                if dist_lookup[i,j] <= dist_lookup[i,i]:
+                    bool_dist_lookup[i,j] = True
+    return bool_dist_lookup
 
 
 def generate_tree(segments: np.ndarray, dist_lookup: np.ndarray) -> nx.Graph:   # Maya
