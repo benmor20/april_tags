@@ -281,6 +281,7 @@ def generate_tree(segments: np.ndarray, dist_lookup: np.ndarray) -> nx.Graph:   
         a NetworkX graph giving the tree of line s
     """
     graph = nx.DiGraph()
+    direction = ""
 
     # Add the root node to the graph
     root = "Root"
@@ -365,6 +366,11 @@ def main():
                          [0, 163, 437, 163],
                          [438, 1, 438, 326],
                          [437, 327, 1, 327]])
+    
+    # parent = np.array([segments[k][3]-segments[k][1], segments[k][4]-segments[k][2]])
+    # child = np.array([segments[k][3]-segments[k][1], segments[k][4]-segments[k][2]])
+    # cross_product = np.cross(parent, child)
+
     print(segments.shape)
     quads_by_idx = quad_detector(segments)
     print(quads_by_idx)
