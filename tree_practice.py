@@ -57,7 +57,7 @@ def generate_tree(segments: np.ndarray, dist_lookup: np.ndarray, cross_lookup: n
                                 graph.add_edge(child3, child4)
     return graph  
 
-def get_quads_from_tree(segment_tree: nx.Graph, dist_lookup: np.ndarray, segments) -> np.ndarray:  # Maya
+def get_quads_from_tree(segment_tree: nx.Graph) -> np.ndarray:  # Maya
     """
     Takes tree and conducts a depth-first search for possible quadrilaterals
         based on nearby line segments.
@@ -76,11 +76,11 @@ def get_quads_from_tree(segment_tree: nx.Graph, dist_lookup: np.ndarray, segment
     """
     quads = []
     for root in segment_tree.nodes():
-        quads = dfs(root, [], segment_tree, quads, segments)
+        quads = dfs(root, [], segment_tree, quads)
     return quads
     
 
-def dfs(node, path, segment_tree, quads, segments):
+def dfs(node, path, segment_tree, quads):
     """
     Doc string here
     """
@@ -90,7 +90,7 @@ def dfs(node, path, segment_tree, quads, segments):
             quads.append(path)
         return
     for child in list(segment_tree.successors(node)):
-        dfs(child, path + [child[0]], segment_tree, quads, segments)
+        dfs(child, path + [child[0]], segment_tree, quads)
     return np.array(quads)
 
 
@@ -164,7 +164,7 @@ def main():
 
     # =show_tree(tree)
 
-    quads = get_quads_from_tree(tree, dist_lookup, segments)
+    quads = get_quads_from_tree(tree)
 
     print(quads)
     print(len(quads))

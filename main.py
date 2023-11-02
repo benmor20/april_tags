@@ -229,8 +229,9 @@ def quad_detector(segments: np.ndarray) -> np.ndarray:  # Anusha
             listed in (x, y)
     """
     dist_lookup = line_segment_distances(segments)
-    tree_graph = generate_tree(segments, dist_lookup)
-    quads = get_quads_from_tree(tree_graph, dist_lookup, segments)
+    cross_lookup = cross_table(segments)
+    tree_graph = generate_tree(segments, dist_lookup, cross_lookup)
+    quads = get_quads_from_tree(tree_graph)
     return quads
 
 
@@ -258,7 +259,7 @@ def line_segment_distances(segments: np.ndarray) -> np.ndarray: # Anusha
     return is_close
 
 
-def generate_tree(segments: np.ndarray, dist_lookup: np.ndarray) -> nx.Graph:   # Maya
+def generate_tree(segments: np.ndarray, dist_lookup: np.ndarray, cross_lookup: np.ndarray) -> nx.Graph:   # Maya
     """
     Generate a tree of line segments to detect quadrilaterals from
     
@@ -293,23 +294,23 @@ def generate_tree(segments: np.ndarray, dist_lookup: np.ndarray) -> nx.Graph:   
         graph.add_edge(root, child)
         # level 2
         for j in range(len(segments)):
-            if j != i:
+            if j != i and dist_lookup[i][j] and cross_lookup[i][j] < 0:
                 child2 = (j, i, 2)
                 graph.add_edge(child, child2)
                 # level 3
                 for k in range(len(segments)):
-                    if k != i and k != j:
+                    if k != i and k != j and dist_lookup[j][k] and cross_lookup[j][k] < 0:
                         child3 = (k, j, i, 3)
                         graph.add_edge(child2, child3)
                         # level 4
                         for l in range(len(segment)):
-                            if l != i and l != k and l != j:
+                            if l != i and l != k and l != j and dist_lookup[k][l] and cross_lookup[k][l] < 0:
                                 child4 = (l, k, j , i, 4)
                                 graph.add_edge(child3, child4)
-    return graph
+    return graph 
 
 
-def get_quads_from_tree(segment_tree: nx.Graph, dist_lookup: np.ndarray, segments) -> np.ndarray:  # Maya
+def get_quads_from_tree(segment_tree: nx.Graph) -> np.ndarray:  # Maya
     """
     Takes tree and conducts a depth-first search for possible quadrilaterals
         based on nearby line segments.
@@ -328,13 +329,13 @@ def get_quads_from_tree(segment_tree: nx.Graph, dist_lookup: np.ndarray, segment
     """
     quads = []
     for root in segment_tree.nodes():
-        quads = dfs(root, [], segment_tree, quads, dist_lookup, segments)
+        quads = dfs(root, [], segment_tree, quads)
     return quads
     
 
-def dfs(node, path, segment_tree, quads, dist_lookup, segments):
+def dfs(node, path, segment_tree, quads):
     """
-    Depth-first search
+    Doc string here
     """
     if len(path) == 4:
         path.sort()
@@ -342,11 +343,23 @@ def dfs(node, path, segment_tree, quads, dist_lookup, segments):
             quads.append(path)
         return
     for child in list(segment_tree.successors(node)):
-        if node == "Root":
-            dfs(child, path + [child[0]], segment_tree, quads,  dist_lookup, segments)
-        elif dist_lookup[node[0]][child[0]]:
-            dfs(child, path + [child[0]], segment_tree, quads,  dist_lookup, segments)
+        dfs(child, path + [child[0]], segment_tree, quads)
     return np.array(quads)
+
+
+def cross_table(segments):
+    """
+    Doc string here
+    """
+    num_segments = len(segments)
+    cross_table = np.zeros((num_segments, num_segments))  # Initialize cross_table with zeros
+
+    for i in range(len(segments)):
+        for j in range(len(segments)):            
+            parent = np.array([segments[i][2]-segments[i][0], segments[i][3]-segments[i][1]])
+            child = np.array([segments[j][2]-segments[j][0], segments[j][3]-segments[j][1]])
+            cross_table[i][j] = np.cross(parent, child)
+    return cross_table
 
 
 def main():
