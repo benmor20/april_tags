@@ -141,18 +141,18 @@ def plot_quad(quad):
 
 
 def main():
-    segments = np.array([[1, 0, 437, 0],
-                         [381, 105, 59, 105],
-                         [58, 112, 58, 221],
-                         [381, 163, 58, 164],
-                         [382, 221, 382, 107],
-                         [383, 221, 383, 109],
-                         [384, 221, 384, 108],
-                         [59, 222, 381, 222],
-                         [0, 326, 0, 1],
-                         [0, 163, 437, 163],
-                         [438, 1, 438, 326],
-                         [437, 327, 1, 327]])
+    # segments = np.array([[1, 0, 437, 0],
+    #                      [381, 105, 59, 105],
+    #                      [58, 112, 58, 221],
+    #                      [381, 163, 58, 164],
+    #                      [382, 221, 382, 107],
+    #                      [383, 221, 383, 109],
+    #                      [384, 221, 384, 108],
+    #                      [59, 222, 381, 222],
+    #                      [0, 326, 0, 1],
+    #                      [0, 163, 437, 163],
+    #                      [438, 1, 438, 326],
+    #                      [437, 327, 1, 327]])
 
     dist_lookup = line_segment_distances(segments)
     cross_lookup = cross_table(segments)
@@ -162,7 +162,7 @@ def main():
     tree = generate_tree(segments, dist_lookup, cross_lookup)
     print(tree)
 
-    # =show_tree(tree)
+    show_tree(tree)
 
     quads = get_quads_from_tree(tree)
 
@@ -174,8 +174,7 @@ def main():
     #     for i in quad:
     #         plot_segment(segments[i])
 
-    for i in quads[37]:
-        plot_segment(segments[i])
+
 
     
     # for quad in quads:
