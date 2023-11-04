@@ -183,12 +183,6 @@ def generate_clusters(mag_dir_matrix: np.ndarray) -> List[Cluster]:  # Ben
         next_cluster_num += 1
         
     final_clusters = [c for c in clusters.values() if c.size > 5]
-    # print('Plotting clusters')
-    # for cluster in final_clusters:
-    #     plt.scatter(cluster.points[:, 0], cluster.points[:, 1])
-    #     plt.xlim([-10, mag_dir_matrix.shape[1] + 10])
-    #     plt.ylim([-10, mag_dir_matrix.shape[0] + 10])
-    #     plt.show()
         
     return final_clusters
 

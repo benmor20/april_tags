@@ -110,14 +110,18 @@ class Cluster:
         :return: the combined cluster, or None if the clusters should not be
             combined
         """
+        # Find what it would look like if the clusters are combined
         combination = self + other
         target_dir_range = min(self.dir_range, other.dir_range) \
                            + DIR_RANGE_CONST / combination.size
         target_mag_range = min(self.mag_range, other.mag_range) \
                            + MAG_RANGE_CONST / combination.size
+        # If the combination is out of range, return None
         if combination.dir_range > target_dir_range \
                 or combination.mag_range > target_mag_range:
             return None
+        # Otherwise, the combination doesn't make the cluster significantly
+        # worse, so return the combination
         return combination
 
     def __add__(self, other: 'Cluster') -> 'Cluster':

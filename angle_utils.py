@@ -12,6 +12,10 @@ def range_from_angles(angles: Iterable[float]) -> Tuple[float, float]:
     """
     Find the smallest range of angles that includes all angles in the given list
 
+    Specifically, sorts the angles list and finds two adjacent angles which are
+    as far apart as possible. The other side of that range is the smallest
+    possible range.
+
     :param angles: a list of angles from -pi to pi
     :return: a tuple defining the start and end of a range that contains every
         angle in the list; a CCW sweep from the first element to the second
@@ -39,6 +43,7 @@ def angle_in_range(angle: float, ang_range: Tuple[float, float]) -> bool:
     lo, hi = ang_range
     if lo < hi:
         return lo <= angle <= hi
+    # Includes the cut from pi to -pi; slightly different logic here
     return angle >= lo or angle <= hi
 
 
@@ -64,14 +69,17 @@ def combine_angle_ranges(arange: Tuple[float, float],
     :param brange: a tuple defining the second range to combine
     :return: a range giving the range of the arange union brange
     """
+    # Only four possible options
     ranges = [
         arange,
         (arange[0], brange[1]),
         (brange[0], arange[1]),
         brange
     ]
+    # Remove any ranges that do not contain all of the angles
     filt_func = lambda r: all(angle_in_range(a, r) for a in (*arange, *brange))
     filtered_ranges = filter(filt_func, ranges)
+    # Of the remaining ranges, return the smallest
     return min(filtered_ranges, key=range_size)
 
 
