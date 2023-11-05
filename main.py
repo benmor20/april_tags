@@ -14,6 +14,12 @@ from matplotlib import pyplot as plt
 
 
 def show_tree(tree):
+    """
+    Display a graph with a graphical interface
+
+    tree: a NetworkX graph that represents all potential combinations of segments 
+    
+    """
     # Define the layout with root at the top center
     layout = nx.drawing.nx_agraph.graphviz_layout(tree, prog="dot")
     
@@ -64,7 +70,7 @@ def april_tag_detector(image_matrix: np.ndarray):
     """
     bw_image = cv2.cvtColor(image_matrix, cv2.COLOR_BGR2GRAY)
     segments = segmentation(bw_image)
-    print(quad_detector(segments))
+    quad_detector(segments)
 
 
 def segmentation(black_white_matrix: np.ndarray) -> np.ndarray: # Alana
@@ -80,16 +86,19 @@ def segmentation(black_white_matrix: np.ndarray) -> np.ndarray: # Alana
             identified by endpoints. Direction of line segments is such that
             light shapes are on the right from a segment's perspective
     """
+    # Compute the gradient of a black_white_matrix
     gradient = compute_gradient(black_white_matrix)
-    print('Found gradient')
+    
+    # Generate the clusters based on the gradient
     cluster_list = generate_clusters(gradient)
-    print('Generated clusters')
+    
+    # Turn clusters into segments
     segment_array = np.zeros(shape=(len(cluster_list), 4))
     for i in range(len(cluster_list)):
         segment_array[i,:] = cluster_list[i].to_segment()
     return segment_array
 
-def compute_gradient(black_white_matrix: np.ndarray) -> np.ndarray: # Alana
+def compute_gradient(black_white_matrix: np.ndarray) -> np.ndarray:
     """
     Calculate the gradient of each pixel in the image.
 
@@ -124,7 +133,7 @@ def compute_gradient(black_white_matrix: np.ndarray) -> np.ndarray: # Alana
     return gradient_array
 
 
-def generate_clusters(mag_dir_matrix: np.ndarray) -> List[Cluster]:  # Ben
+def generate_clusters(mag_dir_matrix: np.ndarray) -> List[Cluster]:
     """
     Finds clusters of pixels.
 
@@ -242,7 +251,6 @@ def quad_detector(segments: np.ndarray) -> np.ndarray:  # Anusha
             listed in (x, y)
     """
     dist_lookup = line_segment_distances(segments)
-    print(dist_lookup)
     cross_lookup = cross_table(segments)
     tree_graph = generate_tree(segments, dist_lookup, cross_lookup)
     quads = get_quads_from_tree(tree_graph)
@@ -274,7 +282,7 @@ def line_segment_distances(segments: np.ndarray) -> np.ndarray: # Anusha
     return dist_lookup
 
 
-def generate_tree(segments: np.ndarray, dist_lookup: np.ndarray, cross_lookup: np.ndarray) -> nx.Graph:   # Maya
+def generate_tree(segments: np.ndarray, dist_lookup: np.ndarray, cross_lookup: np.ndarray) -> nx.Graph:
     """
     Generate a tree of line segments to detect quadrilaterals from
     
@@ -324,10 +332,10 @@ def generate_tree(segments: np.ndarray, dist_lookup: np.ndarray, cross_lookup: n
     return graph 
 
 
-def get_quads_from_tree(segment_tree: nx.Graph) -> np.ndarray:  # Maya
+def get_quads_from_tree(segment_tree: nx.Graph) -> np.ndarray:
     """
     Takes tree and conducts a depth-first search for possible quadrilaterals
-        based on nearby line segments.
+        based on number of line segments.
 
     Follows possible quads in a consistent direction clockwise or 
     counter-clockwise based on first two line segments. Rejects quad if third
@@ -335,7 +343,7 @@ def get_quads_from_tree(segment_tree: nx.Graph) -> np.ndarray:  # Maya
     does not end "close enough" to start of first  segment.
 
     Args:
-        tree:
+        tree: a NetworkX graph that represents all potential combinations of segments
         
     Return:
         a [q x 4 x (x1, y1, x2, y2)] numpy array where 4 x (x1, y1, x2, y2)
@@ -347,25 +355,25 @@ def get_quads_from_tree(segment_tree: nx.Graph) -> np.ndarray:  # Maya
     return quads
     
 
-# def dfs(node, path, segment_tree, quads):
-#     """
-#     Doc string here
-#     """
-#     if len(path) == 4:
-#         path.sort()
-#         if path not in quads:
-#             quads.append(path)
-#         return
-#     for child in list(segment_tree.successors(node)):
-#         dfs(child, path + [child[0]], segment_tree, quads)
-#     return np.array(quads)
-
-def dfs(node, path, segment_tree, quads):
+def dfs(node, path, segment_tree, quads) -> np.ndarray:
     """
-    Doc string here
+    Depth first searches a tree for all paths containing four nodes.
+
+    Recursively searches through a tree using depth first search.
+
+    Args:
+        node: the next node that will be added to a path
+        path: a list that contains the indexes for a potential quad
+        segment_tree: a NetworkX graph that represents all potential combinations of segments
+
+        quads: a [q x 4 x (x1, y1, x2, y2)] numpy array that each new quad
+            gets added to
+
+    Return:
+        a [q x 4 x (x1, y1, x2, y2)] numpy array where 4 x (x1, y1, x2, y2)
+            determines the four line segments making up the quad
     """
     if len(path) == 4:
-        # path.sort()
         if path[0] == min(path):
             quads.append(path)
         return
@@ -374,17 +382,29 @@ def dfs(node, path, segment_tree, quads):
     return np.array(quads)
 
 
-def cross_table(segments):
+def cross_table(segments: np.ndarray)-> np.ndarray:
     """
-    Doc string here
+    Creates a lookup table of the signs of the cross product between two line segments.
+
+    The sign of the cross product between segments represents the direction of the lines.
+        If all of the signs match between line segments than it could be a valid shape.
+    
+    Args:
+        segments: a [n x (x1, y1, x2, y2)] numpy array giving the start and end
+            points of each line segment
+    
+    Returns:
+        a [n x n] numpy array cross_table that returns -1, 0, or 1. 
     """
+    # Initialize cross_table with zeros
     num_segments = len(segments)
-    cross_table = np.zeros((num_segments, num_segments))  # Initialize cross_table with zeros
+    cross_table = np.zeros((num_segments, num_segments))
 
     for i in range(len(segments)):
         for j in range(len(segments)):
             parent = np.array([segments[i][2]-segments[i][0], segments[i][3]-segments[i][1]])
             child = np.array([segments[j][2]-segments[j][0], segments[j][3]-segments[j][1]])
+            # Calculate the cross product between segments and store its sign
             cross_table[i][j] = np.sign(np.cross(parent, child))
     return cross_table
 
