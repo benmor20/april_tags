@@ -45,7 +45,8 @@ def april_tag_detector(image_matrix: np.ndarray):
     """
     bw_image = cv2.cvtColor(image_matrix, cv2.COLOR_BGR2GRAY)
     segments = segmentation(bw_image)
-    quad_detector(segments)
+    quads = quad_detector(segments)
+    return quads, segments
 
 
 def segmentation(black_white_matrix: np.ndarray) -> np.ndarray:
@@ -126,7 +127,6 @@ def generate_clusters(mag_dir_matrix: np.ndarray) -> List[Cluster]:
     # Create graph
     row_len = mag_dir_matrix.shape[1]
     graph = create_cluster_graph(mag_dir_matrix)
-    print('Made cluster graph')
 
     # Create initial clusters (one per pixel)
     clusters = {i: Cluster(np.array([[i % row_len, i // row_len]]),
@@ -245,7 +245,7 @@ def quad_detector(segments: np.ndarray) -> np.ndarray:
     # Build and search tree for quads
     tree_graph = generate_tree(segments, dist_lookup, cross_lookup)
     quads = get_quads_from_tree(tree_graph)
-    show_tree(tree_graph)
+    # show_tree(tree_graph)
     return quads
 
 
@@ -438,51 +438,31 @@ def show_tree(tree):
     plt.show()
 
 
+def plot_segment(segment):
+    """
+    Plot all of the segments on a grid
+
+    Args:
+        segment: a [x1, y1, x2, y2] numpy array giving the start and end
+            points of a line segment
+    """
+    x1, y1, x2, y2 = segment
+    x = [x1,x2]
+    y = [y1,y2]
+    plt.plot(x, y, label='Line', marker='o', markersize=5)  # 'o' specifies markers at the data points
+  
+
 def main():
     # Load in the picture
     color_matrix = cv2.imread('images/black_rectangle.png')
 
     # Call the april tag detector
-    # quads = april_tag_detector(color_matrix)
+    quads, segments = april_tag_detector(color_matrix)
 
-    # segments = np.array([[1, 0, 437, 0],
-    #                      [381, 105, 59, 105],
-    #                      [58, 112, 58, 221],
-    #                      [381, 163, 58, 164],
-    #                      [382, 221, 382, 107],
-    #                      [383, 221, 383, 109],
-    #                      [384, 221, 384, 108],
-    #                      [59, 222, 381, 222],
-    #                      [0, 326, 0, 1],
-    #                      [0, 163, 437, 163],
-    #                      [438, 1, 438, 326],
-    #                      [437, 327, 1, 327]])
-
-    segments = np.array([[0, 0, 0, 1],
-                         [0, 1, 1, 1],
-                         [1, 1, 1, 0],
-                         [1, 0, 0, 0],
-                         [-5, -5, -5, 5],
-                         [-5, 5, 5, 5],
-                         [5, 5, 5, -5],
-                         [5, -5, -5, -5]])
-    
-
-    print(segments.shape)
-    quads_by_idx = quad_detector(segments)
-    print(quads_by_idx)
-    print(quads_by_idx.shape)
-
-    for quad in quads_by_idx:
-        points = np.array([[segments[quad[0], 2], segments[quad[0], 3]],
-                            [segments[quad[0], 0], segments[quad[0], 1]],
-                            [segments[quad[1], 2], segments[quad[1], 3]],
-                            [segments[quad[1], 0], segments[quad[1], 1]],
-                            [segments[quad[2], 2], segments[quad[2], 3]],
-                            [segments[quad[2], 0], segments[quad[2], 1]],
-                            [segments[quad[3], 2], segments[quad[3], 3]],
-                            [segments[quad[3], 0], segments[quad[3], 1]]])
-        plt.plot(points[:, 0], points[:, 1])
+    # Plot quads
+    for quad in quads:
+        for segment in quad:
+            plot_segment(segments[segment])
     plt.show()
 
     
