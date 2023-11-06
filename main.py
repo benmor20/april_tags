@@ -245,7 +245,7 @@ def quad_detector(segments: np.ndarray) -> np.ndarray:
     # Build and search tree for quads
     tree_graph = generate_tree(segments, dist_lookup, cross_lookup)
     quads = get_quads_from_tree(tree_graph)
-    # show_tree(tree_graph)
+    show_tree(tree_graph)
     return quads
 
 
