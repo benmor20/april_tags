@@ -21,9 +21,13 @@ The overarching steps are as follows:
 
 In this project, we worked our way through steps 1-4 of the April Tag detection process, using the algorithm described [Olson's original April Tag Paper](https://april.eecs.umich.edu/media/pdfs/olson2011tags.pdf) as a point of reference.
 
+Throughout our documentation, visualizations are performed on this test image of a black rectangle within a white rectangle:
+
+![Test Image](images/black_rectangle.png)
+
 ## Implementation
 
-###  Pixel Clustering
+###  Pixel Clustering and Segmentation
 
 We started by converting the input image into black-and-white. From here, we used 2-D convolution to approximate the gradient of the image, using the Scharr Operator (convolving a special 3-by-3 matrix and its transpose with the image to calculate the X and Y gradient). From here, we calculated the magnitude and direction of the image gradient.
 
@@ -34,7 +38,13 @@ Once we had the gradient, we grouped pixels which had similar gradients. To do t
 
 As recommended by the paper, we used values of 100 and 1200 for $K_D$ and $K_M$, respectively, though they claim that a wide range of values should work.
 
-Repeating this for every edge will result in groups of pixels which follow straight line edges (or are in patches of very consistent color). To convert these groups into lines, we run Principal Component Analysis on the set of points to compute a unit vector pointing in the direction of the best fit line. From here, we project each of the points onto that vector, and find the ones that project furthest in either direction. These projected points are defined as the end points of the line segment for that cluster. Finally, we sort the two points so that travelling along the line from the first point to the second point will keep the darker side on the right to help with quad detection.
+Repeating this for every edge will result in groups of pixels which follow straight line edges (or are in patches of very consistent color). 
+![Pixel Clusters in Test Image](https://i.imgur.com/4215jkp.png)
+*Merged pixel clusters found in the test image where each color represents a different cluster. Two large clusters for the black area within the rectangle and the white area outside of it are hidden for clarity.*
+
+To convert these groups into lines, we run Principal Component Analysis on the set of points to compute a unit vector pointing in the direction of the best fit line. From here, we project each of the points onto that vector, and find the ones that project furthest in either direction. These projected points are defined as the end points of the line segment for that cluster. Finally, we sort the two points so that travelling along the line from the first point to the second point will keep the darker side on the right to help with quad detection.
+![Segments](https://i.imgur.com/UkESMXp.png)
+*Lines fit to pixel clusters shown above with direction such that the dark area of the image is on the right of the line. The two horizontal segments in the middle are line segments formed from the large clusters of solid color.*
 
 ###  Quad Detection
 
@@ -50,6 +60,14 @@ To optimize searching through all combinations of segments, the algorithm constr
 The distance between segments is calculated from the end coordinates of the first segment to the starting coordinates of the second segment. According to [Olson's original April Tag Paper](https://april.eecs.umich.edu/media/pdfs/olson2011tags.pdf), an appropriate threshold for segment distance is determined as twice the length of the first segment plus an additional five pixels. While this threshold may result in a relatively high false positive rate, later steps in the algorithm revisit these quads to narrow down the list. The paper emphasizes the importance of maintaining a high false positive rate to ensure that all real April tags are included within the quads.
 
 The segmentation tree building algorithm references the distance between segments and checks if it's under the threshold a large number of times. To optimize the algorithm, the paper suggests performing these calculations only once by creating a lookup table. Our lookup table is of size [n x n], where 'n' represents the total number of segments. Each value in the table is either 'true' or 'false' and signifies whether the first segment is considered "close enough" to the second segment
+
+![Quad Detection with high threshold](https://i.imgur.com/diiCyY1.png)
+*Threshold: 2 * length + 5*
+*Because our test image was significantly cleaner (no lighting variation, extreme contrast) and smaller than an actual photo of an AprilTag would be, the suggested threshold resulted in a higher false positive rate than was useful for our application.*
+
+![Quad Detection with low threshold](https://i.imgur.com/yV3PmVY.png)
+*Threshold: 50 pixels*
+*A smaller threshold for the distance between the end of one segment and the start of the next resulted in much more accurate quad detection for our test image.*
 
 #### Winding Order Lookup Table
 For a quad to be valid, all of its segments must follow a specific winding order. Each segment has a starting point and an end point, which means they all have a direction. Winding order checks that each segment goes in the same direction. Determining the winding direction involves taking the cross product of two segments. A positive value indicates a clockwise winding order, while a negative value indicates a counterclockwise order.
